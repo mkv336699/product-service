@@ -17,4 +17,8 @@ router.get('/products/:id', (req, res) => {
 	res.json({ data })
 })
 
+router.post('/products/cart', (req, res) => {
+	//
+})
+
 export default router
