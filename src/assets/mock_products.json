@@ -1,37 +1,39 @@
 [
-    {
-        "id": 1,
-        "title": "Acer 24 inch Monitor",
-        "availableQuantity": 20,
-        "maxOrderableQuantity": 2,
-        "price": 5999
-    },
-    {
-        "id": 2,
-        "title": "CosmicByte Gaming Keyboard",
-        "availableQuantity": 20,
-        "maxOrderableQuantity": 2,
-        "price": 999
-    },
-    {
-        "id": 3,
-        "title": "Evofox Gaming Mouse",
-        "availableQuantity": 20,
-        "maxOrderableQuantity": 2,
-        "price": 799
-    },
-    {
-        "id": 4,
-        "title": "Nvidia Zotac GT 750Ti",
-        "availableQuantity": 20,
-        "maxOrderableQuantity": 2,
-        "price": 7599
-    },
-    {
-        "id": 5,
-        "title": "HyperX 8 GB DDR4 Ram",
-        "availableQuantity": 20,
-        "maxOrderableQuantity": 2,
-        "price": 4999
-    }
+  {
+    "id": 1,
+    "title": "Acer 24 inch Monitor",
+    "availableQuantity": 16,
+    "maxOrderableQuantity": 2,
+    "price": 5999,
+    "reservedQuantity": 2
+  },
+  {
+    "id": 2,
+    "title": "CosmicByte Gaming Keyboard",
+    "availableQuantity": 16,
+    "maxOrderableQuantity": 2,
+    "price": 999,
+    "reservedQuantity": 2
+  },
+  {
+    "id": 3,
+    "title": "Evofox Gaming Mouse",
+    "availableQuantity": 18,
+    "maxOrderableQuantity": 2,
+    "price": 799
+  },
+  {
+    "id": 4,
+    "title": "Nvidia Zotac GT 750Ti",
+    "availableQuantity": 18,
+    "maxOrderableQuantity": 2,
+    "price": 7599
+  },
+  {
+    "id": 5,
+    "title": "HyperX 8 GB DDR4 Ram",
+    "availableQuantity": 18,
+    "maxOrderableQuantity": 2,
+    "price": 4999
+  }
 ]

@@ -1,4 +1,5 @@
 import { Connection } from 'rabbitmq-client'
+import { getCartById } from '../controllers/carts.js'
 
 class RabbitMQService {
 	private static instance: RabbitMQService | null = null
@@ -32,13 +33,16 @@ class RabbitMQService {
 
 		// Consumer
 		this.consumer = rabbit.createConsumer({
-			queue: 'user-events',
+			queue: 'products',
 			queueOptions: { durable: true },
 			qos: { prefetchCount: 2 },
 			exchanges: [{ exchange: 'my-events', type: 'topic' }],
 			queueBindings: [{ exchange: 'my-events', routingKey: 'users.*' }],
 		}, async (msg) => {
 			console.log('received message (user-events)', msg)
+			if (msg && msg.body && msg.body.cartId) {
+				getCartById(msg.body.cartId)
+			}
 		})
 
 		this.consumer.on('error', (err: unknown) => {

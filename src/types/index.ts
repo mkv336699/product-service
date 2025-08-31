@@ -10,4 +10,6 @@ export interface Product {
     availableQuantity: number;
     maxOrderableQuantity: number;
     price: number;
+    quantity?: number;
+    reservedQuantity?: number;
 }
