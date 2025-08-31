@@ -1,0 +1,11 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": [
+    "src/assets/**/*.json",
+    "src/**/*.json",
+    "dist/**/*"
+  ],
+  "exec": "npm run build && npm start",
+  "delay": "1000"
+}

@@ -1,5 +1,3 @@
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
 import type { Product } from '../types/index.js'
 
 // Import products with proper typing

@@ -1,6 +1,6 @@
 export interface Cart {
     id: number;
-    products: any[];
+    products: Product[];
     totalPrice: number;
 }
 
