@@ -2,6 +2,7 @@ export interface Cart {
     id: number;
     products: Product[];
     totalPrice: number;
+    userId: number;
 }
 
 export interface Product {

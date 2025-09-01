@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getAllProducts, getProductById } from '../controllers/products.js'
-import { addToCart } from '../controllers/carts.js'
+import { addToCart, getCartByUserId } from '../controllers/carts.js'
 
 const router = Router()
 
@@ -12,6 +12,8 @@ router.get('/products', getAllProducts)
 
 router.get('/products/:id', getProductById)
 
-router.post('/products/cart', addToCart)
+router.post('/products/carts', addToCart)
+
+router.get('/products/carts/:userId', getCartByUserId)
 
 export default router

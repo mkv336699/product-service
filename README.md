@@ -19,7 +19,7 @@ A **distributed, event-driven microservices** system built for a modern e-commer
          └───────────────────────┼───────────────────────┼───────────────────────┘
                                  │                       │
                     ┌─────────────────────────────────────┐
-                    │           Event Bus                  │
+                    │           Event Bus                 │
                     │        (RabbitMQ/Redis)             │
                     │                                     │
                     │ • Order Created                     │

@@ -1,6 +1,7 @@
 [
   {
     "id": 1,
+    "userId": 1,
     "products": [
       {
         "id": 1,
@@ -20,5 +21,28 @@
       }
     ],
     "totalPrice": 6998
+  },
+  {
+    "id": 2,
+    "userId": 2,
+    "products": [
+      {
+        "id": 4,
+        "title": "Nvidia Zotac GT 750Ti",
+        "availableQuantity": 18,
+        "maxOrderableQuantity": 2,
+        "price": 7599,
+        "quantity": 1
+      },
+      {
+        "id": 5,
+        "title": "HyperX 8 GB DDR4 Ram",
+        "availableQuantity": 18,
+        "maxOrderableQuantity": 2,
+        "price": 4999,
+        "quantity": 1
+      }
+    ],
+    "totalPrice": 12599
   }
 ]

@@ -73,3 +73,17 @@ export const getCartById = async (cartId: string) => {
     // send carts to orders service
     RabbitMQService.getInstance().publish('orders', { cart })
 }
+
+export const getCartByUserId = async (req: any, res: any) => {
+    const cartsFilePath = join(__dirname, '../../src/assets/mock_carts.json')
+
+    // Read carts
+    let carts = JSON.parse(await readFile(cartsFilePath, { encoding: 'utf8' }))
+    let cart = carts.find((c: Cart) => c.userId === Number(req.params.userId))
+
+    return res.status(200).json({
+        success: true,
+        message: 'Cart retrieved successfully',
+        cart: cart
+    })
+}

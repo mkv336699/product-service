@@ -2,18 +2,18 @@
   {
     "id": 1,
     "title": "Acer 24 inch Monitor",
-    "availableQuantity": 16,
+    "availableQuantity": 7,
     "maxOrderableQuantity": 2,
     "price": 5999,
-    "reservedQuantity": 2
+    "reservedQuantity": 11
   },
   {
     "id": 2,
     "title": "CosmicByte Gaming Keyboard",
-    "availableQuantity": 16,
+    "availableQuantity": 7,
     "maxOrderableQuantity": 2,
     "price": 999,
-    "reservedQuantity": 2
+    "reservedQuantity": 11
   },
   {
     "id": 3,
