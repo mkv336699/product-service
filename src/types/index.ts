@@ -1,6 +1,11 @@
+export interface ProductRef {
+    id: number;
+    quantity: number;
+}
+
 export interface Cart {
     id: number;
-    products: Product[];
+    products: ProductRef[];
     totalPrice: number;
     userId: number;
 }
