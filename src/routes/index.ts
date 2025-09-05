@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getAllProducts, getProductById } from '../controllers/products.js'
-import { addToCart, getCartByUserId } from '../controllers/carts.js'
+import { addToCart, removeFromCart, getCartByUserId } from '../controllers/carts.js'
 
 const router = Router()
 
@@ -13,6 +13,8 @@ router.get('/products', getAllProducts)
 router.get('/products/:id', getProductById)
 
 router.post('/products/carts', addToCart)
+
+router.delete('/products/carts', removeFromCart)
 
 router.get('/products/carts/:userId', getCartByUserId)
 

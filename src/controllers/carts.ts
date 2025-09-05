@@ -105,6 +105,108 @@ export const addToCart = async (req: any, res: any) => {
     }
 }
 
+export const removeFromCart = async (req: any, res: any) => {
+    try {
+        const filePath = join(__dirname, '../../src/assets/mock_carts.json')
+        const productsFilePath = join(__dirname, '../../src/assets/mock_products.json')
+
+        // Read carts and products
+        let carts: Cart[] = JSON.parse(await readFile(filePath, { encoding: 'utf8' }))
+        let allProducts: Product[] = JSON.parse(await readFile(productsFilePath, { encoding: 'utf8' }))
+
+        // Extract payload
+        const { userId, productId, quantity } = req.body
+
+        // Validate required fields
+        if (!userId || !productId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: userId, productId'
+            })
+        }
+
+        // Find user's cart
+        const userCart = carts.find(c => c.userId === Number(userId))
+        if (!userCart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found for user',
+                userId: Number(userId)
+            })
+        }
+
+        // Find product in cart
+        const productIndex = userCart.products.findIndex(p => p.id === Number(productId))
+        if (productIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found in cart',
+                productId: Number(productId)
+            })
+        }
+
+        const cartProduct = userCart.products[productIndex]
+        if (!cartProduct) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error accessing cart product'
+            })
+        }
+
+        // Handle quantity removal
+        if (quantity) {
+            // Remove specific quantity
+            const removeQuantity = Number(quantity)
+            if (removeQuantity <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Quantity to remove must be greater than 0'
+                })
+            }
+
+            if (removeQuantity >= cartProduct.quantity) {
+                // Remove entire product from cart
+                userCart.products.splice(productIndex, 1)
+            } else {
+                // Reduce quantity
+                cartProduct.quantity -= removeQuantity
+            }
+        } else {
+            // Remove entire product (no quantity specified)
+            userCart.products.splice(productIndex, 1)
+        }
+
+        // Recalculate total price
+        userCart.totalPrice = userCart.products.reduce((sum, ref) => {
+            const product = allProducts.find(p => p.id === ref.id)
+            return sum + (product ? product.price * ref.quantity : 0)
+        }, 0)
+
+        // If cart is empty, remove it
+        if (userCart.products.length === 0) {
+            const cartIndex = carts.findIndex(c => c.id === userCart.id)
+            if (cartIndex !== -1) {
+                carts.splice(cartIndex, 1)
+            }
+        }
+
+        // Write updated carts back to file
+        await writeFile(filePath, JSON.stringify(carts, null, 2))
+
+        res.status(200).json({
+            success: true,
+            message: 'Product removed from cart successfully',
+            cart: userCart.products.length > 0 ? userCart : null
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to remove product from cart',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        })
+    }
+}
+
 export const getCartById = async (cartId: string) => {
     const cartsFilePath = join(__dirname, '../../src/assets/mock_carts.json')
     const productsFilePath = join(__dirname, '../../src/assets/mock_products.json')
