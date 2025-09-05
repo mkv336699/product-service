@@ -17,43 +17,89 @@ export const addToCart = async (req: any, res: any) => {
         const filePath = join(__dirname, '../../src/assets/mock_carts.json')
         const productsFilePath = join(__dirname, '../../src/assets/mock_products.json')
 
-        // Read carts
-        let carts2: Cart[] = JSON.parse(await readFile(filePath, { encoding: 'utf8' }))
+        // Read carts and products
+        let carts: Cart[] = JSON.parse(await readFile(filePath, { encoding: 'utf8' }))
         let allProducts: Product[] = JSON.parse(await readFile(productsFilePath, { encoding: 'utf8' }))
 
-        // Normalize incoming body to only references
-        const incoming = req.body as Partial<Cart> & { products: Array<Partial<Product> & Partial<ProductRef>> }
-        const productRefs: ProductRef[] = (incoming.products || []).map(p => ({ id: Number(p.id), quantity: Number((p as any).quantity ?? 1) }))
+        // Extract payload
+        const { userId, productId, quantity } = req.body
 
-        // Calculate totalPrice using product catalog
-        const totalPrice = productRefs.reduce((sum, ref) => {
-            const product = allProducts.find(ap => ap.id === ref.id)
-            const price = product ? product.price : 0
-            return sum + price * ref.quantity
-        }, 0)
-
-        const newCart: Cart = {
-            id: Number(incoming.id ?? (carts2.length ? Math.max(...carts2.map(c => c.id)) + 1 : 1)),
-            userId: Number(incoming.userId ?? 0),
-            products: productRefs,
-            totalPrice
+        // Validate required fields
+        if (!userId || !productId || !quantity) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: userId, productId, quantity'
+            })
         }
 
-        // Append to carts
-        carts2.push(newCart)
+        // Validate product exists
+        const product = allProducts.find(p => p.id === Number(productId))
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found',
+                productId: Number(productId)
+            })
+        }
+
+        // Validate quantity
+        if (Number(quantity) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Quantity must be greater than 0'
+            })
+        }
+
+        // Find existing cart for user
+        let userCart = carts.find(c => c.userId === Number(userId))
+
+        if (userCart) {
+            // Update existing cart
+            const existingProductIndex = userCart.products.findIndex(p => p.id === Number(productId))
+            
+            if (existingProductIndex >= 0) {
+                // Update quantity of existing product
+                const existingProduct = userCart.products[existingProductIndex]
+                if (existingProduct) {
+                    existingProduct.quantity += Number(quantity)
+                }
+            } else {
+                // Add new product to cart
+                userCart.products.push({ id: Number(productId), quantity: Number(quantity) })
+            }
+
+            // Recalculate total price
+            userCart.totalPrice = userCart.products.reduce((sum, ref) => {
+                const product = allProducts.find(p => p.id === ref.id)
+                return sum + (product ? product.price * ref.quantity : 0)
+            }, 0)
+        } else {
+            // Create new cart for user
+            const newCartId = carts.length ? Math.max(...carts.map(c => c.id)) + 1 : 1
+            const newProductRef: ProductRef = { id: Number(productId), quantity: Number(quantity) }
+            
+            userCart = {
+                id: newCartId,
+                userId: Number(userId),
+                products: [newProductRef],
+                totalPrice: product.price * Number(quantity)
+            }
+            
+            carts.push(userCart)
+        }
 
         // Write updated carts back to file
-        await writeFile(filePath, JSON.stringify(carts2, null, 2))
+        await writeFile(filePath, JSON.stringify(carts, null, 2))
 
         res.status(201).json({
             success: true,
-            message: 'Cart created successfully',
-            cart: newCart
+            message: 'Product added to cart successfully',
+            cart: userCart
         })
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: 'Failed to create cart',
+            message: 'Failed to add product to cart',
             error: error instanceof Error ? error.message : 'Unknown error'
         })
     }
