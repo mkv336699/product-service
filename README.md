@@ -54,10 +54,15 @@ A **distributed, event-driven microservices** system built for a modern e-commer
 
 ### ✅ **Product Service** (This Repository)
 - **Product Management**: CRUD operations for products
-- **Cart Operations**: Add items to shopping cart
+- **Cart Operations**: 
+  - Add/increment products in shopping cart
+  - Remove/decrement products from cart
+  - User-specific cart management
+  - Product reference-based storage
 - **Data Persistence**: JSON-based storage with file I/O
-- **Type Safety**: Full TypeScript implementation
-- **API Endpoints**: RESTful API for product operations
+- **Type Safety**: Full TypeScript implementation with ProductRef types
+- **API Endpoints**: RESTful API for product and cart operations
+- **Stock Validation**: Prevents overselling with availability checks
 
 ### 🔄 **Order Service** (Planned)
 - **Order Processing**: Create and manage orders
@@ -117,6 +122,43 @@ product-service/
 └── nodemon.json             # Development server configuration
 ```
 
+## 🗃️ Data Model
+
+### **Product Reference Architecture**
+The cart system uses a reference-based approach for better performance and data consistency:
+
+```typescript
+// Product Reference (stored in cart)
+interface ProductRef {
+  id: number;
+  quantity: number;
+}
+
+// Full Product (catalog)
+interface Product {
+  id: number;
+  title: string;
+  availableQuantity: number;
+  maxOrderableQuantity: number;
+  price: number;
+  reservedQuantity?: number;
+}
+
+// Cart (user-specific)
+interface Cart {
+  id: number;
+  userId: number;
+  products: ProductRef[];  // Only references, not full objects
+  totalPrice: number;      // Calculated from current catalog prices
+}
+```
+
+### **Benefits of Reference-Based Carts**
+- **Data Consistency**: Prices always reflect current catalog
+- **Storage Efficiency**: Carts only store IDs and quantities
+- **Performance**: Faster cart operations with smaller payloads
+- **Maintainability**: Product updates automatically reflect in cart totals
+
 ## 🚀 Getting Started
 
 ### **Prerequisites**
@@ -169,11 +211,53 @@ DELETE /products/:id          # Delete product
 
 ### **Carts**
 ```
-POST   /carts                 # Add item to cart
-GET    /carts                 # Get cart contents
-PUT    /carts/:id             # Update cart
-DELETE /carts/:id             # Remove item from cart
+POST   /products/carts        # Add/increment product in cart
+DELETE /products/carts        # Remove/decrement product from cart
+GET    /products/carts/:userId # Get user's cart contents
 ```
+
+#### **Cart API Details**
+
+**Add/Increment Product in Cart**
+```bash
+POST /products/carts
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "productId": 2,
+  "quantity": 3    # Positive to add/increment
+}
+```
+
+**Remove/Decrement Product from Cart**
+```bash
+DELETE /products/carts
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "productId": 2,
+  "quantity": -1   # Negative to remove/decrement
+}
+```
+
+**Get User's Cart**
+```bash
+GET /products/carts/1
+```
+
+#### **Cart Features**
+- **Unified API**: Both POST and DELETE handle positive/negative quantities
+- **Smart Quantity Management**: 
+  - Positive quantities add/increment products
+  - Negative quantities remove/decrement products
+  - Zero or negative final quantity removes product entirely
+- **User-Specific Carts**: Each user has their own cart
+- **Product References**: Carts store only product IDs and quantities
+- **Automatic Total Calculation**: Prices calculated from current product catalog
+- **Empty Cart Cleanup**: Empty carts are automatically removed
+- **Stock Validation**: Prevents adding more than available quantity
 
 ## 🔄 Event-Driven Communication
 
