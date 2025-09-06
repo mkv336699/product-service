@@ -25,7 +25,7 @@ export const addToCart = async (req: any, res: any) => {
         const { userId, productId, quantity } = req.body
 
         // Validate required fields
-        if (!userId || !productId || !quantity) {
+        if (!userId || !productId || quantity === undefined) {
             return res.status(400).json({
                 success: false,
                 message: 'Missing required fields: userId, productId, quantity'
@@ -42,11 +42,11 @@ export const addToCart = async (req: any, res: any) => {
             })
         }
 
-        // Validate quantity
-        if (Number(quantity) <= 0) {
+        const quantityChange = Number(quantity)
+        if (quantityChange === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Quantity must be greater than 0'
+                message: 'Quantity cannot be 0'
             })
         }
 
@@ -61,11 +61,43 @@ export const addToCart = async (req: any, res: any) => {
                 // Update quantity of existing product
                 const existingProduct = userCart.products[existingProductIndex]
                 if (existingProduct) {
-                    existingProduct.quantity += Number(quantity)
+                    const newQuantity = existingProduct.quantity + quantityChange
+                    
+                    // If new quantity is 0 or negative, remove product from cart
+                    if (newQuantity <= 0) {
+                        userCart.products.splice(existingProductIndex, 1)
+                    } else {
+                        // Check if we have enough available quantity
+                        if (newQuantity > product.availableQuantity) {
+                            return res.status(400).json({
+                                success: false,
+                                message: 'Insufficient product quantity available',
+                                availableQuantity: product.availableQuantity,
+                                requestedQuantity: newQuantity
+                            })
+                        }
+                        existingProduct.quantity = newQuantity
+                    }
                 }
             } else {
-                // Add new product to cart
-                userCart.products.push({ id: Number(productId), quantity: Number(quantity) })
+                // Add new product to cart (only if quantity is positive)
+                if (quantityChange > 0) {
+                    // Check if we have enough available quantity
+                    if (quantityChange > product.availableQuantity) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Insufficient product quantity available',
+                            availableQuantity: product.availableQuantity,
+                            requestedQuantity: quantityChange
+                        })
+                    }
+                    userCart.products.push({ id: Number(productId), quantity: quantityChange })
+                } else {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Cannot add negative quantity to non-existent product in cart'
+                    })
+                }
             }
 
             // Recalculate total price
@@ -73,33 +105,59 @@ export const addToCart = async (req: any, res: any) => {
                 const product = allProducts.find(p => p.id === ref.id)
                 return sum + (product ? product.price * ref.quantity : 0)
             }, 0)
-        } else {
-            // Create new cart for user
-            const newCartId = carts.length ? Math.max(...carts.map(c => c.id)) + 1 : 1
-            const newProductRef: ProductRef = { id: Number(productId), quantity: Number(quantity) }
-            
-            userCart = {
-                id: newCartId,
-                userId: Number(userId),
-                products: [newProductRef],
-                totalPrice: product.price * Number(quantity)
+
+            // If cart is empty, remove it
+            if (userCart && userCart.products.length === 0) {
+                const cartIndex = carts.findIndex(c => c.id === userCart!.id)
+                if (cartIndex !== -1) {
+                    carts.splice(cartIndex, 1)
+                }
             }
-            
-            carts.push(userCart)
+        } else {
+            // Create new cart for user (only if quantity is positive)
+            if (quantityChange > 0) {
+                // Check if we have enough available quantity
+                if (quantityChange > product.availableQuantity) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Insufficient product quantity available',
+                        availableQuantity: product.availableQuantity,
+                        requestedQuantity: quantityChange
+                    })
+                }
+
+                const newCartId = carts.length ? Math.max(...carts.map(c => c.id)) + 1 : 1
+                const newProductRef: ProductRef = { id: Number(productId), quantity: quantityChange }
+                
+                userCart = {
+                    id: newCartId,
+                    userId: Number(userId),
+                    products: [newProductRef],
+                    totalPrice: product.price * quantityChange
+                }
+                
+                carts.push(userCart)
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot add negative quantity to non-existent cart'
+                })
+            }
         }
 
         // Write updated carts back to file
         await writeFile(filePath, JSON.stringify(carts, null, 2))
 
+        const message = quantityChange > 0 ? 'Product added to cart successfully' : 'Product removed from cart successfully'
         res.status(201).json({
             success: true,
-            message: 'Product added to cart successfully',
-            cart: userCart
+            message: message,
+            cart: userCart || null
         })
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: 'Failed to add product to cart',
+            message: 'Failed to update cart',
             error: error instanceof Error ? error.message : 'Unknown error'
         })
     }
@@ -118,10 +176,28 @@ export const removeFromCart = async (req: any, res: any) => {
         const { userId, productId, quantity } = req.body
 
         // Validate required fields
-        if (!userId || !productId) {
+        if (!userId || !productId || quantity === undefined) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields: userId, productId'
+                message: 'Missing required fields: userId, productId, quantity'
+            })
+        }
+
+        // Validate product exists
+        const product = allProducts.find(p => p.id === Number(productId))
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found',
+                productId: Number(productId)
+            })
+        }
+
+        const quantityChange = Number(quantity)
+        if (quantityChange === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Quantity cannot be 0'
             })
         }
 
@@ -153,27 +229,15 @@ export const removeFromCart = async (req: any, res: any) => {
             })
         }
 
-        // Handle quantity removal
-        if (quantity) {
-            // Remove specific quantity
-            const removeQuantity = Number(quantity)
-            if (removeQuantity <= 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Quantity to remove must be greater than 0'
-                })
-            }
-
-            if (removeQuantity >= cartProduct.quantity) {
-                // Remove entire product from cart
-                userCart.products.splice(productIndex, 1)
-            } else {
-                // Reduce quantity
-                cartProduct.quantity -= removeQuantity
-            }
-        } else {
-            // Remove entire product (no quantity specified)
+        // Handle quantity change
+        const newQuantity = cartProduct.quantity + quantityChange
+        
+        if (newQuantity <= 0) {
+            // Remove entire product from cart
             userCart.products.splice(productIndex, 1)
+        } else {
+            // Update quantity
+            cartProduct.quantity = newQuantity
         }
 
         // Recalculate total price
@@ -193,15 +257,16 @@ export const removeFromCart = async (req: any, res: any) => {
         // Write updated carts back to file
         await writeFile(filePath, JSON.stringify(carts, null, 2))
 
+        const message = quantityChange > 0 ? 'Product quantity increased successfully' : 'Product quantity decreased successfully'
         res.status(200).json({
             success: true,
-            message: 'Product removed from cart successfully',
+            message: message,
             cart: userCart.products.length > 0 ? userCart : null
         })
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: 'Failed to remove product from cart',
+            message: 'Failed to update cart',
             error: error instanceof Error ? error.message : 'Unknown error'
         })
     }
