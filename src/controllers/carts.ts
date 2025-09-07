@@ -276,38 +276,83 @@ export const getCartById = async (cartId: string) => {
     const cartsFilePath = join(__dirname, '../../src/assets/mock_carts.json')
     const productsFilePath = join(__dirname, '../../src/assets/mock_products.json')
 
-    // Read carts
-    let carts = JSON.parse(await readFile(cartsFilePath, { encoding: 'utf8' }))
-    let cart = carts.find((c: Cart) => c.id === Number(cartId))
+    // Load carts and resolve target cart
+    const carts: Cart[] = JSON.parse(await readFile(cartsFilePath, { encoding: 'utf8' }))
+    const cart = carts.find((c: Cart) => c.id === Number(cartId))
 
-    // block available products
-    let allProducts = JSON.parse(await readFile(productsFilePath, { encoding: 'utf8' }))
-
-    for (let productRef of cart.products) {
-        const p = allProducts.find((p: Product) => p.id === productRef.id)
-        if (!p) {
-            continue
-        }
-
-        if (productRef.quantity > p.availableQuantity) {
-            // break and return error since we don't have required quantities available to fulfill the order
-            const err = {
-                error: {
-                    product: productRef,
-                    availableQuantity: p.availableQuantity
-                }
+    if (!cart) {
+        RabbitMQService.getInstance().publish('orders', {
+            error: {
+                code: 'CART_NOT_FOUND',
+                message: 'Cart not found',
+                cartId: Number(cartId)
             }
-            RabbitMQService.getInstance().publish('orders', err)
-        }
-        p.availableQuantity -= productRef.quantity
-        p.reservedQuantity = p.reservedQuantity ? p.reservedQuantity + productRef.quantity : productRef.quantity
+        })
+        return
     }
 
-    // write it back to file
+    // Load product catalog
+    const allProducts: Product[] = JSON.parse(await readFile(productsFilePath, { encoding: 'utf8' }))
+
+    // Validate availability and existence first (no partial reservation)
+    for (const productRef of cart.products) {
+        const catalogProduct = allProducts.find(p => p.id === productRef.id)
+        if (!catalogProduct) {
+            RabbitMQService.getInstance().publish('orders', {
+                error: {
+                    code: 'PRODUCT_NOT_FOUND',
+                    message: 'Product in cart not found in catalog',
+                    product: productRef
+                }
+            })
+            return
+        }
+
+        if (productRef.quantity > catalogProduct.availableQuantity) {
+            RabbitMQService.getInstance().publish('orders', {
+                error: {
+                    code: 'INSUFFICIENT_STOCK',
+                    message: 'Insufficient quantity to fulfill order',
+                    product: productRef,
+                    availableQuantity: catalogProduct.availableQuantity
+                }
+            })
+            return
+        }
+    }
+
+    // Reserve inventory now that validation passed
+    for (const productRef of cart.products) {
+        const catalogProduct = allProducts.find(p => p.id === productRef.id)!
+        catalogProduct.availableQuantity -= productRef.quantity
+        catalogProduct.reservedQuantity = catalogProduct.reservedQuantity
+            ? catalogProduct.reservedQuantity + productRef.quantity
+            : productRef.quantity
+    }
+
+    // Persist catalog changes
     await writeFile(productsFilePath, JSON.stringify(allProducts, null, 2))
 
-    // send carts to orders service
-    RabbitMQService.getInstance().publish('orders', { cart })
+    // Compute total from current prices to ensure accuracy
+    const enrichedProducts = cart.products.map(ref => {
+        const p = allProducts.find(ap => ap.id === ref.id)
+        return {
+            id: ref.id,
+            quantity: ref.quantity,
+            price: p?.price,
+            title: p?.title
+        }
+    })
+
+    const totalPrice = cart.products.reduce((sum, ref) => {
+        const p = allProducts.find(ap => ap.id === ref.id)
+        return sum + (p ? p.price * ref.quantity : 0)
+    }, 0)
+
+    const enrichedCart = { ...cart, products: enrichedProducts, totalPrice }
+
+    // Publish order-ready cart
+    RabbitMQService.getInstance().publish('orders', { cart: enrichedCart })
 }
 
 export const getCartByUserId = async (req: any, res: any) => {
